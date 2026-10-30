@@ -1,0 +1,22 @@
+# Runtime
+aiogram>=3.22,<4
+SQLAlchemy[asyncio]>=2.0,<3
+aiosqlite>=0.21,<1
+aiohttp>=3.10,<4
+python-dotenv>=1.1,<2
+beautifulsoup4>=4.12,<5
+curl-cffi>=0.13,<1
+Pillow>=10,<12
+
+# Optional PostgreSQL backend (needed only if DATABASE_URL uses postgresql+asyncpg://)
+asyncpg>=0.29,<1
+
+# Test/development
+pytest>=8,<9
+pytest-asyncio>=0.24,<2
+
+# Mini App web server
+fastapi>=0.116,<1
+uvicorn[standard]>=0.35,<1
+
+python-multipart>=0.0.9,<1

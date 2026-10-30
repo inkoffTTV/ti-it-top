@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+  <meta name="theme-color" content="#10131a">
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
+  <title>TI:IT TOP</title>
+  <link rel="icon" href="/favicon.ico">
+  <link rel="stylesheet" href="/assets/css/app.css?v=4.0.7">
+  <script src="https://telegram.org/js/telegram-web-app.js?63"></script>
+</head>
+<body>
+  <div id="app">
+    <header class="topbar">
+      <div class="brand"><span class="brand-mark">TI</span><div><b>TI:IT TOP</b><small>Dota 2 Tournament</small></div></div>
+      <button class="icon-btn" id="refresh" aria-label="Обновить">↻</button>
+    </header>
+
+    <main id="content" class="content">
+      <div class="loading"><span></span><span></span><span></span></div>
+    </main>
+
+    <nav class="nav">
+      <button data-tab="home" class="active"><span>⌂</span><small>Главная</small></button>
+      <button data-tab="profile"><span>◉</span><small>Профиль</small></button>
+      <button data-tab="team"><span>♛</span><small>Команда</small></button>
+      <button data-tab="players"><span>♟</span><small>Игроки</small></button>
+      <button data-tab="tournaments"><span>🏆</span><small>Турниры</small></button>
+      <button data-tab="activity"><span>💬</span><small>Активность</small></button>
+      <button data-tab="admin" class="hidden"><span>⚙</span><small>Админка</small></button>
+    </nav>
+  </div>
+  <div id="toast" class="toast"></div>
+  <script src="/assets/js/app.js?v=4.0.7"></script>
+</body>
+</html>

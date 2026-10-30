@@ -1,0 +1,156 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>TI:IT TOP — табло турнира</title>
+<style>
+  :root{--bg:#0b0e14;--card:#151b26;--line:#263044;--text:#eef2f8;--muted:#8e99ad;--acc:#ff7a45;--ok:#35c07a;--info:#5aa7ef;--gold:#f4c35a}
+  *{box-sizing:border-box}
+  body{margin:0;background:radial-gradient(1200px 600px at 10% -10%,#1b2233 0,transparent 60%),var(--bg);color:var(--text);font:16px/1.4 -apple-system,"Segoe UI",Roboto,Arial,sans-serif;padding:24px 28px}
+  header{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:18px}
+  h1{margin:0;font-size:32px;letter-spacing:.3px}
+  .sub{color:var(--muted);margin-top:4px}
+  .stream{padding:10px 16px;border-radius:12px;background:#9146ff;color:#fff;font-weight:700;text-decoration:none}
+  .grid{display:grid;grid-template-columns:minmax(0,3fr) minmax(280px,1fr);gap:18px}
+  @media (max-width:1000px){.grid{grid-template-columns:1fr}}
+  .panel{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:16px;min-width:0}
+  .panel h2{margin:0 0 12px;font-size:18px;color:var(--muted);text-transform:uppercase;letter-spacing:1px}
+  .board{display:flex;gap:16px;overflow-x:auto;padding-bottom:6px}
+  .round{min-width:185px;flex:1 1 0;display:flex;flex-direction:column}
+  .round .rt{font-size:13px;color:var(--muted);font-weight:800;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px}
+  .rms{flex:1;display:flex;flex-direction:column;justify-content:space-around;gap:12px}
+  .m{border:1px solid var(--line);border-radius:12px;background:#10151f;overflow:hidden}
+  .m.live{border-color:var(--ok);box-shadow:0 0 0 1px rgba(53,192,122,.35)}
+  .t{display:flex;align-items:center;gap:8px;padding:8px 10px;font-size:17px}
+  .t+.t{border-top:1px solid var(--line)}
+  .t .nm{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .t .sc{font-weight:800;min-width:18px;text-align:right}
+  .t.win .nm{font-weight:800}.t.lose{opacity:.5}.t.tbd .nm{color:var(--muted)}
+  .meta{font-size:12px;color:var(--muted);padding:5px 10px;border-top:1px solid var(--line);display:flex;justify-content:space-between}
+  .br{font-weight:800;margin:14px 0 8px}.br:first-child{margin-top:0}
+  table{width:100%;border-collapse:collapse;font-size:16px}
+  th,td{padding:7px 6px;border-bottom:1px solid var(--line);text-align:center}
+  td.n{text-align:left}th{color:var(--muted);font-size:13px}
+  tr.adv td:first-child{color:var(--ok);font-weight:800}
+  .row{display:flex;gap:10px;align-items:center;padding:9px 0;border-bottom:1px solid var(--line)}
+  .row:last-child{border-bottom:0}
+  .time{font-weight:800;width:56px;font-variant-numeric:tabular-nums}
+  .pill{font-size:12px;padding:2px 8px;border-radius:10px;border:1px solid var(--line);color:var(--muted);white-space:nowrap}
+  .pill.LIVE{color:var(--ok);border-color:var(--ok)}.pill.SCHEDULED{color:var(--info)}
+  .champ{font-size:22px;padding:14px;border-radius:14px;background:rgba(244,195,90,.12);border:1px solid rgba(244,195,90,.5);margin-bottom:14px}
+  footer{color:var(--muted);font-size:13px;margin-top:16px}
+  /* 5.13: режим «сцена» для OBS — крупно один матч */
+  body.stage{padding:0;min-height:100vh;display:flex;align-items:center;justify-content:center}
+  body.stage.clear{background:transparent}
+  body.stage header,body.stage .grid,body.stage footer{display:none}
+  #stage{display:none;width:min(1400px,96vw);text-align:center}
+  body.stage #stage{display:block}
+  .st-top{font-size:clamp(14px,1.6vw,22px);color:var(--muted);letter-spacing:2px;text-transform:uppercase}
+  .st-round{font-size:clamp(20px,2.6vw,38px);font-weight:800;margin:6px 0 26px}
+  .st-row{display:grid;grid-template-columns:1fr auto 1fr;gap:3vw;align-items:center}
+  .st-team{background:rgba(21,27,38,.92);border:1px solid var(--line);border-radius:22px;padding:3vw 2vw;min-width:0}
+  .st-team.win{border-color:var(--gold);box-shadow:0 0 0 2px rgba(244,195,90,.45)}
+  .st-team img{width:clamp(70px,9vw,140px);height:clamp(70px,9vw,140px);border-radius:20px;object-fit:cover;margin-bottom:14px}
+  .st-name{font-size:clamp(26px,3.6vw,60px);font-weight:900;line-height:1.1;word-break:break-word}
+  .st-score{font-size:clamp(56px,8vw,140px);font-weight:900;font-variant-numeric:tabular-nums;white-space:nowrap}
+  .st-score small{display:block;font-size:clamp(14px,1.4vw,22px);color:var(--muted);font-weight:700;letter-spacing:2px}
+  .st-maps{display:flex;gap:12px;justify-content:center;flex-wrap:wrap;margin-top:28px}
+  .st-map{padding:10px 18px;border-radius:14px;background:rgba(21,27,38,.92);border:1px solid var(--line);font-size:clamp(14px,1.4vw,22px)}
+  .st-status{margin-top:22px;font-size:clamp(16px,1.8vw,28px);font-weight:800}
+  .st-status.live{color:var(--ok)}
+</style>
+</head>
+<body>
+<header><div><h1 id="title">TI:IT TOP</h1><div class="sub" id="sub">Загрузка…</div></div><a class="stream" id="stream" href="#" target="_blank" rel="noopener">Трансляция на Twitch</a></header>
+<div class="grid"><div class="panel" id="main"></div><div><div class="panel" id="next"><h2>Ближайшие матчи</h2></div><div class="panel" id="last" style="margin-top:18px"><h2>Последние результаты</h2></div></div></div>
+<footer>Время — по Москве. Страница обновляется сама каждые 30 секунд. Режим для стрима: добавьте к адресу &amp;mode=stage (прозрачный фон — ещё &amp;bg=none, конкретный матч — &amp;match=номер).</footer>
+<div id="stage"></div>
+<script>
+(() => {
+  const esc = (v) => String(v == null ? '' : v).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const params = new URLSearchParams(location.search);
+  const id = params.get('t') || '1';
+  const stageMode = params.get('mode') === 'stage';
+  if (stageMode) document.body.classList.add('stage');
+  if (stageMode && params.get('bg') === 'none') document.body.classList.add('clear');
+  function pickStage(items) {
+    const pinned = params.get('match');
+    if (pinned) return items.find((m) => String(m.no) === String(pinned)) || null;
+    const ready = items.filter((m) => m.team1 && m.team2);
+    return ready.find((m) => m.status === 'LIVE')
+      || ready.filter((m) => m.status === 'SCHEDULED' && m.scheduled_at).sort((a, b) => a.scheduled_at.localeCompare(b.scheduled_at))[0]
+      || ready.filter((m) => m.status === 'FINISHED').slice(-1)[0] || null;
+  }
+  function renderStage(d) {
+    const box = document.getElementById('stage');
+    const m = pickStage(d.schedule || []);
+    if (!m) { box.innerHTML = '<div class="st-top">' + esc(d.tournament.name) + '</div><div class="st-round">Матчей пока нет</div>'; return; }
+    const games = (d.games || {})[String(m.id)] || [];
+    const w1 = games.filter((g) => Number(g.winner_team_id) === Number(m.team1.id)).length;
+    const w2 = games.filter((g) => Number(g.winner_team_id) === Number(m.team2.id)).length;
+    const s1 = m.status === 'FINISHED' ? m.score1 : w1;
+    const s2 = m.status === 'FINISHED' ? m.score2 : w2;
+    const side = (t, win) => '<div class="st-team' + (win ? ' win' : '') + '">' + (t.avatar_url ? '<img src="' + esc(t.avatar_url) + '" alt="">' : '') + '<div class="st-name">' + esc(t.name) + '</div></div>';
+    const won = m.status === 'FINISHED' ? Number(m.winner_team_id) : null;
+    const status = m.status === 'LIVE' ? '<div class="st-status live">Идёт матч</div>'
+      : m.status === 'FINISHED' ? '<div class="st-status">Победа: ' + esc(won === Number(m.team1.id) ? m.team1.name : m.team2.name) + '</div>'
+      : '<div class="st-status">Начало' + (m.time ? ' в ' + esc(m.time) + ' МСК' : ' скоро') + '</div>';
+    box.innerHTML = '<div class="st-top">' + esc(d.tournament.name) + '</div><div class="st-round">' + esc(m.round_name) + ' · BO' + esc(m.best_of) + '</div>' +
+      '<div class="st-row">' + side(m.team1, won === Number(m.team1.id)) + '<div class="st-score">' + esc(s1 == null ? 0 : s1) + ':' + esc(s2 == null ? 0 : s2) + '<small>по картам</small></div>' + side(m.team2, won === Number(m.team2.id)) + '</div>' +
+      (games.length ? '<div class="st-maps">' + games.map((g) => '<div class="st-map">Карта ' + esc(g.no) + ': <b>' + esc(Number(g.winner_team_id) === Number(m.team1.id) ? m.team1.name : m.team2.name) + '</b></div>').join('') + '</div>' : '') + status;
+  }
+  const team = (t, ph, sc, win) => {
+    if (!t) return '<div class="t tbd"><span class="nm">' + esc(ph || 'Ожидается') + '</span><span class="sc"></span></div>';
+    const cls = win == null ? '' : (Number(win) === Number(t.id) ? ' win' : ' lose');
+    return '<div class="t' + cls + '"><span class="nm">' + (t.seed ? '#' + esc(t.seed) + ' ' : '') + esc(t.name) + '</span><span class="sc">' + (sc == null ? '' : esc(sc)) + '</span></div>';
+  };
+  const card = (m) => '<div class="m' + (m.status === 'LIVE' ? ' live' : '') + '">' + team(m.team1, m.team1_placeholder, m.score1, m.winner_team_id) + team(m.team2, m.team2_placeholder, m.score2, m.winner_team_id) +
+    '<div class="meta"><span>Матч ' + esc(m.no) + ' · BO' + esc(m.best_of) + '</span><span>' + (m.status === 'LIVE' ? 'идёт' : m.scheduled_text ? esc(m.scheduled_text.slice(11)) + ' · ' + esc(m.scheduled_text.slice(0, 5)) : '') + '</span></div></div>';
+  function stageHtml(v) {
+    let h = '';
+    (v.standings || []).forEach((g) => {
+      h += '<div class="br">' + esc(g.title) + '</div><table><tr><th>#</th><th style="text-align:left">Команда</th><th>И</th><th>В</th><th>Н</th><th>П</th><th>Карты</th><th>Очки</th></tr>' +
+        g.rows.map((r) => '<tr class="' + (r.advancing ? 'adv' : '') + '"><td>' + r.place + '</td><td class="n">' + esc(r.name) + '</td><td>' + r.played + '</td><td>' + r.wins + '</td><td>' + r.draws + '</td><td>' + r.losses + '</td><td>' + r.maps_won + ':' + r.maps_lost + '</td><td><b>' + r.points + '</b></td></tr>').join('') + '</table>';
+    });
+    if (v.kind === 'table') return h;
+    (v.brackets || []).forEach((b) => {
+      h += '<div class="br">' + esc(b.title) + '</div><div class="board">' + b.rounds.map((r) => '<div class="round"><div class="rt">' + esc(r.name) + '</div><div class="rms">' + r.matches.map(card).join('') + '</div></div>').join('') + '</div>';
+    });
+    return h;
+  }
+  async function load() {
+    try {
+      const r = await fetch('/api/v2/public/tournaments/' + encodeURIComponent(id), { cache: 'no-store' });
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      const d = await r.json();
+      if (stageMode) { renderStage(d); return; }
+      document.getElementById('title').textContent = d.tournament.name;
+      document.getElementById('sub').textContent = 'Старт: ' + (d.tournament.start || '—');
+      document.title = d.tournament.name + ' — табло';
+      document.getElementById('stream').href = d.stream;
+      const v = d.engine;
+      let main = '<h2>Сетка</h2>';
+      if (!v) main += '<div class="sub">Сетка ещё не сформирована.</div>';
+      else {
+        if (v.champion) main += '<div class="champ">Победитель: <b>' + esc(v.champion.name) + '</b></div>';
+        if (d.tournament.status === 'FINISHED') main += '<img src="/api/v2/public/tournaments/' + encodeURIComponent(id) + '/results.png" alt="Итоги турнира" style="width:100%;border-radius:14px;margin-bottom:14px" onerror="this.remove()">';
+        const stages = (v.all_stages && v.all_stages.length) ? v.all_stages : [v];
+        main += stages.map((s, i) => (stages.length > 1 ? '<div class="br">Этап ' + (i + 1) + ' · ' + esc(s.description || '') + '</div>' : '') + stageHtml(s)).join('');
+      }
+      document.getElementById('main').innerHTML = main;
+      const items = d.schedule || [];
+      const next = items.filter((m) => m.status !== 'FINISHED' && m.team1 && m.team2).slice(0, 8);
+      const last = items.filter((m) => m.status === 'FINISHED').slice(-8).reverse();
+      document.getElementById('next').innerHTML = '<h2>Ближайшие матчи</h2>' + (next.length ? next.map((m) => '<div class="row"><span class="time">' + esc(m.time || '—') + '</span><span style="flex:1">' + esc(m.team1.name) + ' — ' + esc(m.team2.name) + '<div class="sub" style="margin:0;font-size:12px">' + esc(m.round_name) + ' · BO' + m.best_of + (m.day ? ' · ' + esc(m.day) : '') + '</div></span><span class="pill ' + esc(m.status) + '">' + esc(m.status_text) + '</span></div>').join('') : '<div class="sub">Нет назначенных матчей.</div>');
+      document.getElementById('last').innerHTML = '<h2>Последние результаты</h2>' + (last.length ? last.map((m) => '<div class="row"><span style="flex:1">' + esc(m.team1 ? m.team1.name : '') + ' <b>' + esc(m.score1) + ':' + esc(m.score2) + '</b> ' + esc(m.team2 ? m.team2.name : '') + '<div class="sub" style="margin:0;font-size:12px">' + esc(m.round_name) + '</div></span></div>').join('') : '<div class="sub">Результатов пока нет.</div>');
+    } catch (e) {
+      document.getElementById('sub').textContent = 'Не удалось обновить (' + e.message + '). Повтор через 30 секунд.';
+    }
+  }
+  load();
+  setInterval(load, stageMode ? 10000 : 30000);
+})();
+</script>
+</body>
+</html>

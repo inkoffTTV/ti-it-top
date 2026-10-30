@@ -1,0 +1,13 @@
+__pycache__/
+*.pyc
+.env
+tournament.db
+tournament.db-*
+*.db
+profile_cache.json
+runtime/
+RECORDINGS/
+.pytest_cache/
+*.log
+.env.*
+!.env.example
