@@ -1,3 +1,5 @@
+<p align="center"><img src=".github/banner.svg" width="100%" alt="TI:IT TOP"/></p>
+
 # TI:IT TOP — Telegram-бот для турниров Dota 2
 
 Асинхронный production-бот на **aiogram 3.x + SQLAlchemy 2.x (aiosqlite)**: регистрация игроков,
