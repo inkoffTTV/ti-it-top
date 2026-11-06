@@ -188,6 +188,7 @@ def build_user_router() -> APIRouter:
                 )
             ) or 0)
         from miniapp_v2.routes_records import count_records as _records_count
+        from services.mvp_banner import current as _mvp_banner
         from services.audience import TWITCH_CHANNEL, TWITCH_URL, follows as _follows, kind_of
 
         async with session_scope() as _s:
@@ -208,6 +209,7 @@ def build_user_router() -> APIRouter:
             "kind_chosen": bool(_chosen) or viewer.is_admin,
             "follows": _fl,
             "stream": {"channel": TWITCH_CHANNEL, "url": TWITCH_URL, "records": _records_count()},
+            "mvp": await _mvp_banner(),
             "registered": viewer.registered,
             "is_admin": viewer.is_admin,
             "steam_linked": bool(profile and profile.steam_id64),

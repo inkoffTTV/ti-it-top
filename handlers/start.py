@@ -5,7 +5,7 @@ import logging
 from pathlib import Path
 
 from aiogram import F, Router
-from aiogram.filters import CommandStart
+from aiogram.filters import Command, CommandObject, CommandStart
 from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery, FSInputFile, Message
 
@@ -79,6 +79,10 @@ async def cmd_start(message: Message, state: FSMContext) -> None:
         await session.commit()
     logger.info("[START] User %s entered (registered=%s)", tg.id, registered)
     text = WELCOME.format(reg_hint=REG_HINT_DONE if registered else REG_HINT_TODO)
+    from services.mvp_banner import current as mvp_current, welcome_line
+    mvp = welcome_line(await mvp_current())
+    if mvp:
+        text = text.replace("\n\n", "\n\n" + mvp + "\n\n", 1)
     await _send_banner(message)
     await send_main_menu(message, text)
     from handlers.common import get_config
@@ -232,3 +236,35 @@ async def cb_reg_start(callback: CallbackQuery, state: FSMContext) -> None:
     from handlers.profile import begin_registration
     await begin_registration(callback, state)
     await callback.answer()
+
+
+@router.message(Command("mvp"))
+async def cmd_mvp(message: Message, command: CommandObject) -> None:
+    """Админ: /mvp Имя | подпись — плашка «MVP по выбору игроков»; /mvp off — убрать; /mvp — что сейчас."""
+    if not is_admin(message.from_user.id if message.from_user else None):
+        await message.answer("⛔ У вас нет прав администратора.")
+        return
+    from services import mvp_banner
+
+    arg = (command.args or "").strip()
+    if not arg:
+        cur = await mvp_banner.current()
+        await message.answer(
+            (mvp_banner.welcome_line(cur) + ("\n(задано вручную)" if cur and cur["source"] == "manual" else "\n(по голосованию игроков)")
+             if cur else "Плашки MVP сейчас нет.")
+            + "\n\nПоставить: <code>/mvp Имя | подпись</code>\nУбрать ручную: <code>/mvp off</code>",
+            parse_mode="HTML",
+        )
+        return
+    if arg.lower() in ("off", "clear", "выкл", "убрать"):
+        mvp_banner.clear()
+        cur = await mvp_banner.current()
+        await message.answer("Ручная плашка убрана." + ("\nТеперь показывается MVP по голосованию: " + cur["name"] if cur else ""))
+        return
+    name, _, caption = arg.partition("|")
+    try:
+        b = mvp_banner.set_manual(name, caption)
+    except ValueError as exc:
+        await message.answer(str(exc))
+        return
+    await message.answer("Готово. На главном экране:\n" + mvp_banner.welcome_line({**b, "source": "manual"}), parse_mode="HTML")
