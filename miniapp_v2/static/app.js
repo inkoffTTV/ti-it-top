@@ -874,6 +874,14 @@
     return '<div class="card stream"><div class="row"><span class="avatar stream-ic">' + ic('bolt') + '</span><div class="grow"><b>Трансляция турниров</b><div class="small muted">twitch.tv/' + esc(st.channel) + '</div></div>' +
       '<button class="btn small primary" type="button" data-act="ext" data-url="' + esc(st.url) + '">Смотреть</button></div></div>';
   }
+  // «MVP по выбору игроков»: задаёт админ (Админ-панель → MVP на главной) или голосование за MVP турнира
+  function mvpCard() {
+    const m = state.me && state.me.mvp;
+    if (!m || !m.name) return '';
+    return '<div class="card mvp"><div class="row"><span class="avatar mvp-ic">' + ic('crown') + '</span><div class="grow">' +
+      '<div class="eyebrow">MVP матчей по выбору игроков</div><b class="mvp-name">' + esc(m.name) + '</b>' +
+      (m.caption ? '<div class="small muted">' + esc(m.caption) + '</div>' : '') + '</div></div></div>';
+  }
   function liveHtml(live) {
     const items = arr(live && live.items);
     if (!items.length) return '';
@@ -885,7 +893,7 @@
   VIEWS.home = async (ctx) => {
     let live = null; try { live = await ctx.api('/api/v2/live'); } catch (e) { live = null; }
     if (!ctx.alive()) return;
-    const top = streamCard() + recordsItem() + liveHtml(live);
+    const top = mvpCard() + streamCard() + recordsItem() + liveHtml(live);
     if (state.me && state.me.kind === 'VIEWER') {
       const u = (state.me && state.me.user) || {};
       ctx.set('<div class="page-head"><div class="eyebrow">TI:IT TOP · зритель</div><h1>Привет, ' + esc(u.first_name || u.name || 'зритель') + '!</h1><p>Сетка, расписание, результаты и трансляция турниров.</p></div>' + top +
@@ -1860,6 +1868,7 @@
     ['aTeams', ic('crown'), 'Команды', 'teams'],
     ['aUsers', ic('users'), 'Пользователи', 'users'],
     ['aBroadcast', ic('megaphone'), 'Рассылка', null],
+    ['aMvp', ic('crown'), 'MVP на главной', null],
     ['aAdmins', ic('shield'), 'Админы', null],
     ['aAI', ic('bot'), 'AI-помощник', null],
     ['aDiagnostics', ic('globe'), 'Диагностика', null],
@@ -2661,6 +2670,32 @@
     if (!text) { toast('Введите текст рассылки', 'bad'); return; }
     if (!(await confirmDialog({ title: 'Отправить всем пользователям?', text: text.length > 300 ? text.slice(0, 300) + '…' : text, ok: 'Отправить' }))) return;
     await mutate(el, () => api('/api/v2/admin/broadcast', { method: 'POST', body: { text } }), 'Рассылка запущена');
+  };
+
+  // ---------- MVP на главной ----------
+  VIEWS.aMvp = async (ctx) => {
+    const d = await ctx.api('/api/v2/admin/mvp-banner');
+    if (!ctx.alive()) return;
+    const m = d.manual || {};
+    const cur = d.current;
+    ctx.set(backBtn() + '<div class="page-head"><h1>MVP на главной</h1><p>Плашка «MVP матчей по выбору игроков» вверху главного экрана и в приветствии /start. ' +
+      'Если ручную убрать, покажется победитель голосования за MVP последнего турнира.</p></div>' +
+      '<div class="card"><div class="card-head"><h3>Сейчас на главной</h3>' + (cur ? pill(cur.source === 'manual' ? 'вручную' : 'по голосованию', cur.source === 'manual' ? 'info' : 'ok') : '') + '</div>' +
+      (cur ? '<b>' + esc(cur.name) + '</b>' + (cur.caption ? '<div class="small muted">' + esc(cur.caption) + '</div>' : '') : '<div class="muted small">Плашки нет: голосований ещё не было, вручную не задано.</div>') + '</div>' +
+      '<div class="card"><label class="field">Имя<input class="input" id="mvpName" maxlength="40" placeholder="Витёк" value="' + esc(m.name || '') + '"></label>' +
+      '<label class="field">Подпись<input class="input" id="mvpCaption" maxlength="120" placeholder="Босс, легенда, начальник" value="' + esc(m.caption || '') + '"></label>' +
+      '<button class="btn primary block" type="button" data-act="mvp-save">Поставить на главную</button>' +
+      (d.manual ? '<button class="btn block" type="button" data-act="mvp-clear" style="margin-top:8px">Убрать ручную плашку</button>' : '') + '</div>' +
+      '<div class="note">То же из бота: <code>/mvp Имя | подпись</code>, убрать — <code>/mvp off</code>.</div>');
+  };
+  ACTIONS['mvp-save'] = async (el) => {
+    const name = (document.getElementById('mvpName') || {}).value || '';
+    const caption = (document.getElementById('mvpCaption') || {}).value || '';
+    if (!name.trim()) { toast('Укажите имя', 'bad'); return; }
+    await mutate(el, () => api('/api/v2/admin/mvp-banner', { method: 'POST', body: { name: name.trim(), caption: caption.trim() } }), 'MVP на главной обновлён', { me: true });
+  };
+  ACTIONS['mvp-clear'] = async (el) => {
+    await mutate(el, () => api('/api/v2/admin/mvp-banner', { method: 'DELETE' }), 'Ручная плашка убрана', { me: true });
   };
 
   // ---------- Администраторы ----------

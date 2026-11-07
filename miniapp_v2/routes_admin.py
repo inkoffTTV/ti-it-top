@@ -139,6 +139,32 @@ def build_admin_router() -> APIRouter:
     router = APIRouter(prefix="/api/v2/admin", route_class=SafeRoute)
 
     # ------------------------------------------------------------------
+    # Плашка «MVP по выбору игроков» на главном экране (services/mvp_banner.py)
+    # ------------------------------------------------------------------
+    @router.get("/mvp-banner")
+    async def mvp_banner_get(viewer: Viewer = Depends(admin_dep)):
+        from services import mvp_banner
+
+        return {"manual": mvp_banner.manual(), "current": await mvp_banner.current()}
+
+    @router.post("/mvp-banner")
+    async def mvp_banner_set(payload: dict = Body(...), viewer: Viewer = Depends(admin_dep)):
+        from services import mvp_banner
+
+        try:
+            mvp_banner.set_manual(str(payload.get("name") or ""), str(payload.get("caption") or ""))
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail=str(exc))
+        return {"manual": mvp_banner.manual(), "current": await mvp_banner.current()}
+
+    @router.delete("/mvp-banner")
+    async def mvp_banner_clear(viewer: Viewer = Depends(admin_dep)):
+        from services import mvp_banner
+
+        mvp_banner.clear()
+        return {"manual": None, "current": await mvp_banner.current()}
+
+    # ------------------------------------------------------------------
     # Статистика (один запрос со скалярными подзапросами)
     # ------------------------------------------------------------------
     @router.get("/stats")
