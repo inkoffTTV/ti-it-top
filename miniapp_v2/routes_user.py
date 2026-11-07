@@ -1005,6 +1005,16 @@ def build_user_router() -> APIRouter:
             raise HTTPException(status_code=404, detail="Аватар не загружен.")
         return FileResponse(path, media_type="image/jpeg", headers={"Cache-Control": "public, max-age=86400"})
 
+    @router.get("/mvp-banner/image", include_in_schema=False)
+    async def mvp_banner_image():
+        """Фон плашки MVP на главной (services/mvp_banner.py)."""
+        from services.mvp_banner import image_path
+
+        path = image_path()
+        if not path.is_file():
+            raise HTTPException(status_code=404, detail="Фон не загружен.")
+        return FileResponse(path, media_type="image/jpeg", headers={"Cache-Control": "public, max-age=604800"})
+
     @router.get("/teams/{team_id}/avatar", include_in_schema=False)
     async def team_avatar(team_id: int):
         """Только локальный файл. Telegram API не вызывается."""

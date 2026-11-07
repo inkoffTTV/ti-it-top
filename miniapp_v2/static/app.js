@@ -878,7 +878,8 @@
   function mvpCard() {
     const m = state.me && state.me.mvp;
     if (!m || !m.name) return '';
-    return '<div class="card mvp"><div class="row"><span class="avatar mvp-ic">' + ic('crown') + '</span><div class="grow">' +
+    const bg = m.image ? ' has-bg" style="background-image:linear-gradient(90deg,rgba(0,0,0,.78),rgba(0,0,0,.35)),url(\'' + esc(m.image) + '\')' : '';
+    return '<div class="card mvp' + bg + '"><div class="row"><span class="avatar mvp-ic">' + ic('crown') + '</span><div class="grow">' +
       '<div class="eyebrow">MVP матчей по выбору игроков</div><b class="mvp-name">' + esc(m.name) + '</b>' +
       (m.caption ? '<div class="small muted">' + esc(m.caption) + '</div>' : '') + '</div></div></div>';
   }
@@ -2686,13 +2687,31 @@
       '<label class="field">Подпись<input class="input" id="mvpCaption" maxlength="120" placeholder="Босс, легенда, начальник" value="' + esc(m.caption || '') + '"></label>' +
       '<button class="btn primary block" type="button" data-act="mvp-save">Поставить на главную</button>' +
       (d.manual ? '<button class="btn block" type="button" data-act="mvp-clear" style="margin-top:8px">Убрать ручную плашку</button>' : '') + '</div>' +
-      '<div class="note">То же из бота: <code>/mvp Имя | подпись</code>, убрать — <code>/mvp off</code>.</div>');
+      '<div class="card"><div class="card-head"><h3>Фон карточки</h3></div>' +
+      (cur && cur.image ? '<div class="mvp-preview" style="background-image:url(\'' + esc(cur.image) + '\')"></div>' : '<div class="muted small">Фона нет. Лучше всего горизонтальная картинка: она растянется на всю карточку и обрежется по краям.</div>') +
+      '<div class="row" style="gap:8px;margin-top:10px"><label class="btn small" for="mvpBgFile">' + ic('image') + (cur && cur.image ? ' Заменить фон' : ' Загрузить фон') + '</label>' +
+      '<input type="file" id="mvpBgFile" class="file-input" accept="image/*" data-change="mvp-bg">' +
+      (cur && cur.image ? '<button class="btn small" type="button" data-act="mvp-bg-clear">Убрать фон</button>' : '') + '</div></div>' +
+      '<div class="note">То же из бота: <code>/mvp Имя | подпись</code>, убрать — <code>/mvp off</code>. Фон: фото с подписью <code>/mvp фон</code>, убрать — <code>/mvp фон off</code>.</div>');
   };
   ACTIONS['mvp-save'] = async (el) => {
     const name = (document.getElementById('mvpName') || {}).value || '';
     const caption = (document.getElementById('mvpCaption') || {}).value || '';
     if (!name.trim()) { toast('Укажите имя', 'bad'); return; }
     await mutate(el, () => api('/api/v2/admin/mvp-banner', { method: 'POST', body: { name: name.trim(), caption: caption.trim() } }), 'MVP на главной обновлён', { me: true });
+  };
+  ACTIONS['mvp-bg'] = async (el) => {
+    const f = el.files && el.files[0];
+    el.value = '';
+    if (!f) return;
+    if (!/^image\//.test(f.type || '')) { toast('Выберите картинку', 'bad'); return; }
+    if (f.size > 10 * 1024 * 1024) { toast('Картинка больше 10 МБ', 'bad'); return; }
+    const fd = new FormData(); fd.append('file', f);
+    toast('Загружаю фон…');
+    await mutate(null, () => api('/api/v2/admin/mvp-banner/image', { method: 'POST', body: fd, timeout: 60000 }), 'Фон обновлён', { me: true });
+  };
+  ACTIONS['mvp-bg-clear'] = async (el) => {
+    await mutate(el, () => api('/api/v2/admin/mvp-banner/image', { method: 'DELETE' }), 'Фон убран', { me: true });
   };
   ACTIONS['mvp-clear'] = async (el) => {
     await mutate(el, () => api('/api/v2/admin/mvp-banner', { method: 'DELETE' }), 'Ручная плашка убрана', { me: true });
