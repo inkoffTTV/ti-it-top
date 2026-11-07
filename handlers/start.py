@@ -247,12 +247,33 @@ async def cmd_mvp(message: Message, command: CommandObject) -> None:
     from services import mvp_banner
 
     arg = (command.args or "").strip()
+    # Фон карточки: фото (или картинка файлом) с подписью «/mvp фон»; «/mvp фон off» — убрать
+    if arg.lower() in ("фон off", "фон выкл", "bg off"):
+        mvp_banner.clear_image()
+        await message.answer("Фон плашки MVP убран.")
+        return
+    if arg.lower() in ("фон", "bg"):
+        media = message.photo[-1] if message.photo else (
+            message.document if message.document and (message.document.mime_type or "").startswith("image/") else None)
+        if media is None:
+            await message.answer("Пришлите горизонтальную картинку с подписью <code>/mvp фон</code>. "
+                                 "Она растянется на всю карточку и обрежется по краям.", parse_mode="HTML")
+            return
+        buf = await message.bot.download(media)
+        try:
+            mvp_banner.set_image(buf.read() if buf else b"")
+        except ValueError as exc:
+            await message.answer(str(exc))
+            return
+        await message.answer("Фон плашки MVP обновлён. Откройте мини-приложение заново, чтобы увидеть.")
+        return
     if not arg:
         cur = await mvp_banner.current()
         await message.answer(
             (mvp_banner.welcome_line(cur) + ("\n(задано вручную)" if cur and cur["source"] == "manual" else "\n(по голосованию игроков)")
              if cur else "Плашки MVP сейчас нет.")
-            + "\n\nПоставить: <code>/mvp Имя | подпись</code>\nУбрать ручную: <code>/mvp off</code>",
+            + "\n\nПоставить: <code>/mvp Имя | подпись</code>\nУбрать ручную: <code>/mvp off</code>"
+            + "\nФон: фото с подписью <code>/mvp фон</code>, убрать — <code>/mvp фон off</code>",
             parse_mode="HTML",
         )
         return

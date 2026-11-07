@@ -13,7 +13,7 @@ import time
 from datetime import datetime, timezone
 from typing import Any
 
-from fastapi import APIRouter, Body, Depends, HTTPException, Query
+from fastapi import APIRouter, Body, Depends, File, HTTPException, Query, UploadFile
 from sqlalchemy import String, func, or_, select
 
 from database.engine import session_scope
@@ -163,6 +163,26 @@ def build_admin_router() -> APIRouter:
 
         mvp_banner.clear()
         return {"manual": None, "current": await mvp_banner.current()}
+
+    @router.post("/mvp-banner/image")
+    async def mvp_banner_image_set(file: UploadFile = File(...), viewer: Viewer = Depends(admin_dep)):
+        from services import mvp_banner
+
+        if not (file.content_type or "").startswith("image/"):
+            raise HTTPException(status_code=400, detail="Нужна картинка: JPG, PNG или WebP.")
+        raw = await file.read(mvp_banner.MAX_IMAGE_BYTES + 1)
+        try:
+            await asyncio.to_thread(mvp_banner.set_image, raw)
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail=str(exc))
+        return {"manual": mvp_banner.manual(), "current": await mvp_banner.current()}
+
+    @router.delete("/mvp-banner/image")
+    async def mvp_banner_image_clear(viewer: Viewer = Depends(admin_dep)):
+        from services import mvp_banner
+
+        mvp_banner.clear_image()
+        return {"manual": mvp_banner.manual(), "current": await mvp_banner.current()}
 
     # ------------------------------------------------------------------
     # Статистика (один запрос со скалярными подзапросами)

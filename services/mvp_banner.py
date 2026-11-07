@@ -3,6 +3,8 @@
 Админ задаёт её вручную (имя и подпись) — в мини-приложении (Админ-панель → MVP на главной) или командой
 /mvp в боте; хранится в runtime/mvp_banner.json и переживает перезапуск. Если вручную ничего не задано,
 показывается победитель голосования за MVP последнего завершённого турнира (services/tournament_extras.py).
+Фон карточки — горизонтальная картинка runtime/mvp_banner.jpg (обрезается по краям под размер карточки):
+загрузка в мини-приложении или фото с подписью «/mvp фон» в боте.
 """
 from __future__ import annotations
 
@@ -17,6 +19,8 @@ logger = logging.getLogger("MVP_BANNER")
 PATH = Path(__file__).resolve().parent.parent / "runtime" / "mvp_banner.json"
 MAX_NAME = 40
 MAX_CAPTION = 120
+MAX_IMAGE_BYTES = 10 * 1024 * 1024
+IMAGE_MAX_SIDE = 1600
 
 
 def manual() -> dict[str, str] | None:
@@ -53,8 +57,67 @@ def clear() -> None:
         pass
 
 
+def image_path() -> Path:
+    return PATH.with_suffix(".jpg")
+
+
+def image_url() -> str | None:
+    """Адрес фона с версией по времени изменения (кэш браузера обновится после замены)."""
+    p = image_path()
+    try:
+        return f"/api/v2/mvp-banner/image?v={int(p.stat().st_mtime)}"
+    except OSError:
+        return None
+
+
+def prepare_image(raw: bytes) -> bytes:
+    """Проверяет картинку и сохраняет в JPEG, длинная сторона до IMAGE_MAX_SIDE; ValueError — не картинка."""
+    from io import BytesIO
+
+    from PIL import Image, ImageOps
+
+    if not raw:
+        raise ValueError("Файл пустой.")
+    if len(raw) > MAX_IMAGE_BYTES:
+        raise ValueError("Картинка больше 10 МБ.")
+    try:
+        with Image.open(BytesIO(raw)) as image:
+            image = ImageOps.exif_transpose(image).convert("RGB")
+            image.thumbnail((IMAGE_MAX_SIDE, IMAGE_MAX_SIDE), Image.Resampling.LANCZOS)
+            out = BytesIO()
+            image.save(out, format="JPEG", quality=85, optimize=True, progressive=True)
+            return out.getvalue()
+    except Exception as exc:  # noqa: BLE001
+        raise ValueError("Не удалось прочитать картинку. Нужен JPG, PNG или WebP.") from exc
+
+
+def set_image(raw: bytes) -> str:
+    data = prepare_image(raw)
+    p = image_path()
+    p.parent.mkdir(parents=True, exist_ok=True)
+    tmp = p.with_suffix(".jpg.tmp")
+    tmp.write_bytes(data)
+    tmp.replace(p)
+    logger.info("[MVP_BANNER] background image set (%d bytes)", len(data))
+    return image_url() or ""
+
+
+def clear_image() -> None:
+    try:
+        image_path().unlink()
+    except FileNotFoundError:
+        pass
+
+
 async def current() -> dict[str, Any] | None:
     """{name, caption, source: manual|vote, tournament?, votes?} или None, если показывать некого."""
+    b = await _current()
+    if b is not None:
+        b["image"] = image_url()
+    return b
+
+
+async def _current() -> dict[str, Any] | None:
     m = manual()
     if m:
         return {**m, "source": "manual"}
